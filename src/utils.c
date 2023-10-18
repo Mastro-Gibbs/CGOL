@@ -9,74 +9,95 @@
 #include <ctype.h>
 #include <time.h>
 
-long value(char* strval)
-{
-    long value = -1;
-    int  valid = 1;
 
+uint8_t value(char* strval, size_t* intval)
+{
     for (int j = 0; strval[j] != '\0'; j++) 
     {
-        if (!isdigit(strval[j])) 
-        {
-            valid = 0;
-            break;
-        }
+        if (!isdigit(strval[j])) return 0;
     }
 
-    if (valid) value = atol(strval);
+    if (atol(strval) < 1) return 0;
 
-    return value;
+    *intval = strtoul(strval, NULL, 10);
+
+    return 1;
+}
+
+
+void runtime_commands(void)
+{
+    printf(
+           "\n"
+           "RUNTIME COMMANDS\n"
+           "-KeyBoard:\n"
+           "q -> quit\n"
+           "s -> suspend/run execution\n"
+           "z -> decrease update rate\n"
+           "x -> increase update rate\n"
+           "c -> clear all, works if execution is suspended\n"
+           "n -> start new random seed\n"
+           "-Mouse:\n"
+           "left click -> toogle cell, works if execution is suspended\n"
+        );
 }
 
 
 void usage(void)
 {
-    printf("Usage: ./cgol [OPTION] [PARAM VALUE]\n\n"
+    printf("Usage: ./cgol [OPTION] [PARAM VALUE]\n"
+           "\n"
            "PARAMS:\n"
            "-s -> grid seed\n"
            "-w -> window width\n"
            "-h -> window height\n"
-           "-d -> default grid density\n"
-           "-r -> grid update rate [1..10]\n\n"
-           "OPTIONS\n"
-           "-m -> max window size\n"
-           "-b -> black mode\n"
-           "-? -> help\n\n"
+           "-d -> default grid density [5..50]\n"
+           "-r -> grid update rate [1..50]\n"
+           "\n"
            "VALUES\n"
-           "positive integers\n");
+           "positive integers\n"
+           "\n"
+           "OPTIONS\n"
+           "-m     -> max window size\n"
+           "-e     -> start with editor mode on\n"
+           "--help -> show this\n"
+        );
+    
+    runtime_commands();
 }
 
-CGOLArgs ArgsErr(CGOLArgs* args)
+void ArgsErr(void)
 {
-    fprintf(stderr, "Error: option without value.\n");
-    return *args;
+    fprintf(stderr, "Error: param without/invalid value or unknown option.\n");
+    exit(EXIT_FAILURE);
 }
 
 
 void CGOL_begin_msg(CGOLArgs* args)
 {
     printf(
+            "\n"
             "Started Conway's Game Of Life using:\n"
             "-seed:    %lu\n"
-            "-rate:    %u\n" 
-            "-width:   %upx\n"
-            "-height:  %upx\n"
-            "-density: %u%%\n",
+            "-width:   %u px\n"
+            "-height:  %u px\n"
+            "-density: %u %%\n"
+            "-updates: %u per second\n",
             args->seed,
-            (args->rate == 999999) ? 1 : args->rate == 100000 ? 10 : ((1000000 - args->rate) / 100000),
             args->display.width,
             args->display.height,
-            args->density
+            args->density,
+            args->rate
         );
+
+    if (!args->xargs.exposed) runtime_commands();
 
     fflush(stdout);
 }
 
 
-CGOLArgs CGOL_parse_args(int argc, char** argv) 
+size_t CGOL_rand_seed(void)
 {
-    srand(time(NULL));
-
     size_t a = rand(), b = time(NULL);
     a = (a ^ 0xdeadbeef) + (b ^ 0xbeeff00d);
     a ^= (a >> 16);
@@ -85,86 +106,166 @@ CGOLArgs CGOL_parse_args(int argc, char** argv)
     a *= 0x7afb6c3d;
     a ^= (a >> 16);
 
-    CGOLArgs args = {a, 300000, {800, 600, 0, 0}, 11};
+    return a;
+}
+
+
+void CGOL_pause(uint32_t times)
+{
+    usleep(999999 / times);
+}
+
+
+CGOLArgs init_CGOLArgs(void)
+{
+    srand(time(NULL));
+    size_t randseed = CGOL_rand_seed();
+
+    CGOLArgs args = 
+    {
+        .seed    = randseed, 
+        .rate    = 4, 
+        .density = 11, 
+        .display = 
+        {
+            .width     = 800, 
+            .height    = 600, 
+            .maxsize   = 0
+        }, 
+        .xargs = 
+        {
+            .exposed = 0, 
+            .evt     = 1, 
+            .suspend = 0, 
+            .clear   = 0, 
+            .newseed = 0, 
+            .exit    = 0,
+            .grid    = NULL
+        }
+    };
+
+    return args;
+}
+
+
+CGOLArgs CGOL_parse_args(int argc, char** argv) 
+{
+    CGOLArgs args = init_CGOLArgs();
+    size_t   val  = 1;
+
+    char*    param;
+    char*    strval;
 
     if (1 == argc) return args;
 
-    for (int i = 1; i < argc; ++i) 
+    for (int i = 1; i < argc && val > 0; ++i) 
     {
-        if (strcmp(argv[i], "-?") == 0)
+        param = argv[i];
+
+        if (strcmp(param, "--help") == 0)
         {
             usage();
             exit(EXIT_SUCCESS);
         }
-        else if (strcmp(argv[i], "-m") == 0)
+
+        else if (strcmp(param, "-m") == 0)
         {
             args.display.maxsize = 1;
             continue;
         }
-        else if (strcmp(argv[i], "-b") == 0)
+
+        else if (strcmp(param, "-e") == 0)
         {
-            args.display.blackmode = 1;
+            args.xargs.clear   = 1;
+            args.xargs.suspend = 1;
             continue;
         }
 
-        if (i + 1 >= argc) return ArgsErr(&args);
+        if (i + 1 >= argc) continue;
 
-        else if (strcmp(argv[i], "-s") == 0) 
+        ++i;
+        strval = argv[i];
+        val    = 0;
+
+        if (strcmp(param, "-s") == 0) 
         {
-            i++;
-            size_t val = value(argv[i]);
-
-            if (val != -1) args.seed = val;
-            else return ArgsErr(&args);
+            if (value(strval, &val)) args.seed = (size_t) val;
         } 
-        else if (strcmp(argv[i], "-w") == 0) 
+
+        else if (strcmp(param, "-w") == 0) 
         {
-            i++;
-            uint32_t val = (uint32_t) value(argv[i]);
-
-            if (val != -1) args.display.width = val;
-            else return ArgsErr(&args);
-        } 
-        else if (strcmp(argv[i], "-h") == 0) 
-        {
-            i++;
-            uint32_t val = (uint32_t) value(argv[i]);
-
-            if (val != -1) args.display.height = val;
-            else return ArgsErr(&args);
-        } 
-        else if (strcmp(argv[i], "-d") == 0) 
-        {
-            i++;
-            uint32_t val = (uint32_t) value(argv[i]);
-
-            if (val <= 1)
-                val = 1;
-            else if (val >= 100)
-                val = 100;
-
-            if (val != -1) args.density = val;
-            else return ArgsErr(&args);
-        } 
-        else if (strcmp(argv[i], "-r") == 0) 
-        {
-            i++;
-            uint32_t val = (uint32_t) value(argv[i]);
-
-            if (val != -1)
+            if (value(strval, &val))
             {
-                if (val <= 1)
-                    val = 999999;
-                else if (val >= 10)
-                    val = 100000;
-                else
-                    val = 1000000 - (val * 100000);
+                if (val < 800)
+                {
+                    val = 800;
+                    printf("Width value too low: nomalized to %lu\n", val);
+                }
                 
-                args.rate = val;
+                args.display.width = (uint32_t) val;
             }
-            else return ArgsErr(&args);
         } 
-        else return ArgsErr(&args);
+
+        else if (strcmp(param, "-h") == 0) 
+        {
+            if (value(strval, &val))
+            {
+                if (val < 600)
+                {
+                    val = 600;
+                    printf("Height value too low: nomalized to %lu\n", val);
+                }
+                
+                args.display.height = (uint32_t) val;
+            }
+        } 
+
+        else if (strcmp(param, "-d") == 0) 
+        {
+            if (value(strval, &val))
+            {
+                if (val < 5)
+                    args.density = 5;
+                else if (val > 50)
+                    args.density = 50;
+                else
+                    args.density = val;
+
+                if (val < 5 || val > 50)
+                    printf("Density value non valid: nomalized to %u\n", args.density);
+            }
+        } 
+
+        else if (strcmp(param, "-u") == 0) 
+        {
+            if (value(strval, &val))
+            {
+                if (val > 50)
+                    args.rate = 50;
+                else
+                    args.rate = val;
+
+                if (val > 50)
+                    printf("Update value non valid: nomalized to %u\n", args.rate);
+            }
+        } 
+
+        else
+        {
+            val = 0;
+        }
+    }
+
+    if (val == 0)
+    {
+        fprintf(stderr, "Error: option '%s' without/invalid value or unknown.\n", param);
+        exit(EXIT_FAILURE);
+    }
+
+    if (args.xargs.clear && args.xargs.suspend)
+    {
+        args.seed    = 0;
+        args.density = 0;
     }
 
     return args;

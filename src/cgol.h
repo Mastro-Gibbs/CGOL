@@ -4,11 +4,15 @@
 #include "common.h"
 #include <stdlib.h>
 
-CGOLMatrix* CGOL_init_grid(const CGOLArgs* args);
+CGOLMatrix* CGOL_init_grid(CGOLArgs* args);
 
-void CGOL_release_grid(CGOLMatrix* grid);
+void CGOL_clear_grid(CGOLMatrix* cgol);
 
-void CGOL_algorithm(CGOLMatrix* grid);
+void CGOL_newseed(CGOLMatrix* cgol, const CGOLArgs* args);
+
+void CGOL_release_grid(CGOLMatrix* cgol);
+
+void CGOL_algorithm(CGOLMatrix* cgol);
 
 
 

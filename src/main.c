@@ -4,55 +4,87 @@
 
 #include <stdio.h>
 
+X11Env*     env  = NULL;
+CGOLMatrix* cgol = NULL;
 
-int Run(CGOLMatrix* grid, CGOLArgs* args)
+void __attribute__((destructor)) destructor(void) 
 {
-    volatile uint32_t exit    = 0;
-    volatile uint32_t exposed = 0;
-    volatile uint32_t evt     = 1;
+    CGOL_release_grid(cgol);
+    CGOL_X11_delete_env();
+}
 
+
+void ClearCGOL(XEvtArgs* xargs)
+{
+    CGOL_clear_grid(cgol);
+    CGOL_X11_clear();
+    xargs->clear = 0;
+}
+
+
+void NewCGOL(CGOLArgs* args)
+{
+    args->seed = CGOL_rand_seed();
+    CGOL_newseed(cgol, args);
+    CGOL_begin_msg(args);
+    CGOL_X11_draw_grid(cgol);
+    args->xargs.newseed = 0;
+}
+
+
+int Run(CGOLArgs* args)
+{
     CGOL_begin_msg(args);
 
-    while (!exit)
+    while (!args->xargs.exit)
     {
-        if (!evt && exposed) 
-        {   
-            CGOL_X11_draw_grid(grid);
-            CGOL_algorithm(grid);
-            usleep(args->rate);
+        CGOL_X11_next_evt(args);
 
-            continue;    
+        if (args->xargs.exposed && args->xargs.suspend && args->xargs.clear)
+        {
+            ClearCGOL(&args->xargs);
         }
 
-        CGOL_X11_next_evt(&evt, &exit, &exposed);
-    }
+        else if (args->xargs.exposed && args->xargs.newseed)
+        {
+            NewCGOL(args);
+        }
 
-    CGOL_release_grid(grid);
-    CGOL_X11_delete_env();
+        else if (args->xargs.evt && args->xargs.exposed) 
+        {
+            CGOL_X11_clear();
+            CGOL_X11_draw_grid(cgol);
+        }
+
+        else if (!args->xargs.evt && args->xargs.exposed && !args->xargs.suspend) 
+        {   
+            CGOL_algorithm(cgol);
+            CGOL_X11_clear();
+            CGOL_X11_draw_grid(cgol);
+            CGOL_pause(args->rate);
+        }
+    }
 
     return 0;
 }
 
 
-int Failure(CGOLMatrix* grid)
+int Failure(void)
 {
-    CGOL_release_grid(grid);
-    CGOL_X11_delete_env();
-
     fprintf(stderr, "Failed to stat cgol :(\n");
-
     return 1;
 }
 
 
 int main(int argc, char** argv)
 {   
-    CGOLArgs    args = CGOL_parse_args(argc, argv);
-    X11Env*     env  = CGOL_X11_create(&args.display, 1);
-    CGOLMatrix* grid = CGOL_init_grid(&args);
+    CGOLArgs args = CGOL_parse_args(argc, argv);
+             
+    env  = CGOL_X11_create(&args.display, 1);
+    cgol = CGOL_init_grid(&args);
 
-    if (NULL == grid || NULL == env) 
-        return Failure(grid);
+    if (NULL == cgol || NULL == env) 
+        return Failure();
 
-    return Run(grid, &args);
+    return Run(&args);
 }

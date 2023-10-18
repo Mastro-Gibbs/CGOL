@@ -29,4 +29,4 @@ C implementation of the Conway's game of life.
 ---
 
 ### How to
-run **./cgol -h** for all launch options
+run **./cgol --help** for all launch/runtime options

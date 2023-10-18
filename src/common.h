@@ -21,16 +21,36 @@ typedef struct
     uint32_t width;
     uint32_t height;
     uint8_t  maxsize;
-    uint8_t  blackmode;
+    
 } X11Display;
+
+
+typedef struct
+{
+    volatile uint32_t exposed;
+    volatile uint32_t evt;
+    volatile uint32_t suspend;
+    volatile uint32_t clear;
+    volatile uint32_t newseed;
+    volatile uint32_t exit;
+
+    CGOLMatrix*       grid;
+
+} XEvtArgs;
+
 
 typedef struct 
 {
     size_t     seed;
     uint32_t   rate;
-    X11Display display;
     uint32_t   density;
+    
+    X11Display display;
+    XEvtArgs   xargs;
+    
 } CGOLArgs;
+
+
 
 
 #define INFINITE_FACTOR   150

@@ -1,6 +1,7 @@
 #include "X11Window.h"
 
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <stdlib.h>
 
 
@@ -11,18 +12,28 @@ struct X11Env
 
     GC       gc;
     int      s;
+
+    Colormap colormap;
+    XColor   grid_color;
+
+    uint32_t width;
+    uint32_t height;
 };
 
 
 X11Env* m_env = NULL;
 
 
+
 X11Env* CGOL_X11_create(X11Display* display,
                         const uint8_t set)
 {
+    XSizeHints* size_hints;
+
     X11Env* env = malloc(sizeof(X11Env));
 
     if (NULL == env) return NULL;
+
 
     env->d = XOpenDisplay(NULL);
 
@@ -36,43 +47,72 @@ X11Env* CGOL_X11_create(X11Display* display,
 
     display->width  = display->maxsize ? XDisplayWidth(env->d, env->s)  : display->width,
     display->height = display->maxsize ? XDisplayHeight(env->d, env->s) : display->height,
+    env->width      = display->width;
+    env->height     = display->height;
 
     env->w = XCreateSimpleWindow(
         env->d,
         RootWindow(env->d, env->s),
         0, 
         0,
-        display->maxsize ? XDisplayWidth(env->d, env->s)  : display->width,
-        display->maxsize ? XDisplayHeight(env->d, env->s) : display->height,
+        env->width,
+        env->height,
         1,
         BlackPixel(env->d, env->s),
-        display->blackmode ? BlackPixel(env->d, env->s) : WhitePixel(env->d, env->s)
+        WhitePixel(env->d, env->s)
     );
+
+    size_hints = XAllocSizeHints();
+    size_hints->flags = PMinSize | PMaxSize;
+    size_hints->min_width  = size_hints->max_width  = env->width;
+    size_hints->min_height = size_hints->max_height = env->height;
+
+    XSetWMNormalHints(env->d, env->w, size_hints);
+    XFree(size_hints);
+
+    XSelectInput(env->d, env->w, KeyPressMask | ExposureMask | ButtonPressMask);
 
     env->gc = XCreateGC(env->d, env->w, 0, NULL);
     
-    XSelectInput(env->d, env->w, ExposureMask | KeyPressMask);
     XMapWindow(env->d, env->w);
 
-    XSetForeground(env->d, env->gc, display->blackmode ? WhitePixel(env->d, env->s) : BlackPixel(env->d, env->s));
+    XSetForeground(env->d, env->gc, BlackPixel(env->d, env->s));
 
-    if (0 != set) m_env = env;
+    XStoreName(env->d, env->w, "CGOL: Conway's Game Of Life");
+
+    env->colormap = DefaultColormap(env->d, env->s);
+
+    XParseColor(env->d, env->colormap, "#EDEEEF", &env->grid_color);
+    XAllocColor(env->d, env->colormap, &env->grid_color);
+
+    m_env = env;
 
     return env;
 }
 
 
-void CGOL_X11_set_env(X11Env* env)
+void CGOL_X11_clear(void)
 {
-    m_env = env;
+    XClearWindow(m_env->d, m_env->w);
+
+    XSetForeground(m_env->d, m_env->gc, m_env->grid_color.pixel);
+
+    for (uint32_t i = 0; i < m_env->width; i+=10)
+    {
+        XDrawLine(m_env->d, m_env->w, m_env->gc, 0, i, m_env->width, i);
+        XDrawLine(m_env->d, m_env->w, m_env->gc, i, 0, i, m_env->height);
+    }
+
+    XSetForeground(m_env->d, m_env->gc, BlackPixel(m_env->d, m_env->s));
+
+    XFlush(m_env->d);
 }
 
 
-void CGOL_X11_next_evt(volatile uint32_t* evt, 
-                       volatile uint32_t* exit, 
-                       volatile uint32_t* exposed)
+void CGOL_X11_next_evt(CGOLArgs* args)
 {
     XEvent xevt;
+    uint32_t col, row, val;
 
     if (XPending(m_env->d))
     {
@@ -80,42 +120,71 @@ void CGOL_X11_next_evt(volatile uint32_t* evt,
         
         switch (xevt.type)
         {
+
+        case ButtonPress:
+            if (args->xargs.suspend == 1)
+            {
+                row = (INFINITE_FACTOR_2 - 1) + (xevt.xbutton.y / 10);
+                col = (INFINITE_FACTOR_2 - 1) + (xevt.xbutton.x / 10);
+                val = args->xargs.grid->grid[row][col];
+
+                args->xargs.grid->grid[row][col] = !val;
+
+                CGOL_X11_draw_grid(args->xargs.grid);
+            }
+            break;
+
         case KeyPress:
-            *exit = 1;
+            if (xevt.xkey.keycode == 39) args->xargs.suspend = !args->xargs.suspend; // s
+            if (xevt.xkey.keycode == 24) args->xargs.exit    = 1; // q
+            if (xevt.xkey.keycode == 57) args->xargs.newseed = 1; // n
+            
+            if (args->xargs.suspend)
+            {
+                if (xevt.xkey.keycode == 54) args->xargs.clear   = 1; // c
+            }
+
+            if (xevt.xkey.keycode == 52) // z
+            {
+                if (args->rate > 1) args->rate -= 1;
+            }
+
+            if (xevt.xkey.keycode == 53) // x
+            {
+                if (args->rate < 50) args->rate += 1;
+            }
+
             break;
 
         case Expose:
-            *exposed = 1;
+            args->xargs.exposed = 1;
             break;
         
         default:
             break;
         }
 
-        *evt = 1;
+        args->xargs.evt = 1;
     }
-    else *evt = 0;
+    else args->xargs.evt = 0;
 }
 
-void CGOL_X11_draw_grid(const CGOLMatrix* grid)
+void CGOL_X11_draw_grid(const CGOLMatrix* cgol)
 {
     if (NULL != m_env)
     {
-        XClearWindow(m_env->d, m_env->w);
-        XFlush(m_env->d);
-
-        for (size_t i = INFINITE_FACTOR_2 - 1; i < grid->rows - INFINITE_FACTOR_2; ++i)
+        for (size_t i = INFINITE_FACTOR_2 - 1, xi = 0; i < cgol->rows - INFINITE_FACTOR_2; ++i, xi+=10)
         {
-            for (size_t j = INFINITE_FACTOR_2 - 1; j < grid->cols - INFINITE_FACTOR_2; ++j)
+            for (size_t j = INFINITE_FACTOR_2 - 1, xj = 0; j < cgol->cols - INFINITE_FACTOR_2; ++j, xj+=10)
             {
-                if (grid->grid[i][j] == 1)
+                if (cgol->grid[i][j] == 1)
                 {
                     XFillRectangle(
                         m_env->d, 
                         m_env->w, 
                         m_env->gc,
-                        (j - INFINITE_FACTOR_2 - 1) * 10,
-                        (i - INFINITE_FACTOR_2 - 1) * 10,
+                        xj,
+                        xi,
                         9,
                         9
                     );
