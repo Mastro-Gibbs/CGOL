@@ -60,7 +60,7 @@ void CGOL_begin_msg(CGOLArgs* args)
             "-seed:    %lu\n"
             "-rate:    %u\n" 
             "-width:   %upx\n"
-            "-height:  %upx\n",
+            "-height:  %upx\n"
             "-density: %u%%\n",
             args->seed,
             (args->rate == 999999) ? 1 : args->rate == 100000 ? 10 : ((1000000 - args->rate) / 100000),
