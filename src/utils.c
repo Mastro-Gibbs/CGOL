@@ -41,7 +41,7 @@ void usage(void)
            "OPTIONS\n"
            "-m -> max window size\n"
            "-b -> black mode\n"
-           "-h -> help\n\n"
+           "-? -> help\n\n"
            "VALUES\n"
            "positive integers\n");
 }
@@ -91,7 +91,7 @@ CGOLArgs CGOL_parse_args(int argc, char** argv)
 
     for (int i = 1; i < argc; ++i) 
     {
-        if (strcmp(argv[i], "-h") == 0)
+        if (strcmp(argv[i], "-?") == 0)
         {
             usage();
             exit(EXIT_SUCCESS);
