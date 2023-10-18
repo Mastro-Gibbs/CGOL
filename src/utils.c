@@ -36,6 +36,7 @@ void usage(void)
            "-s -> grid seed\n"
            "-w -> window width\n"
            "-h -> window height\n"
+           "-d -> default grid density\n"
            "-r -> grid update rate [1..10]\n\n"
            "OPTIONS\n"
            "-m -> max window size\n"
@@ -82,7 +83,7 @@ CGOLArgs CGOL_parse_args(int argc, char** argv)
     a *= 0x7afb6c3d;
     a ^= (a >> 16);
 
-    CGOLArgs args = {a, 300000, {800, 600, 0, 0}};
+    CGOLArgs args = {a, 300000, {800, 600, 0, 0}, 11};
 
     if (1 == argc) return args;
 
