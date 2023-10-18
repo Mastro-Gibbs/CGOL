@@ -29,6 +29,7 @@ typedef struct
     size_t     seed;
     uint32_t   rate;
     X11Display display;
+    uint32_t   density;
 } CGOLArgs;
 
 
