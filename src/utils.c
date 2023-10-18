@@ -130,6 +130,19 @@ CGOLArgs CGOL_parse_args(int argc, char** argv)
             if (val != -1) args.display.height = val;
             else return ArgsErr(&args);
         } 
+        else if (strcmp(argv[i], "-d") == 0) 
+        {
+            i++;
+            uint32_t val = (uint32_t) value(argv[i]);
+
+            if (val <= 1)
+                val = 1;
+            else if (val >= 100)
+                val = 100;
+
+            if (val != -1) args.density = val;
+            else return ArgsErr(&args);
+        } 
         else if (strcmp(argv[i], "-r") == 0) 
         {
             i++;
