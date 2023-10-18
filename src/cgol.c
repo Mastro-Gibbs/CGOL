@@ -5,7 +5,7 @@
 #include <time.h>
 
 
-uint8_t CGOL_hash(size_t a, size_t b)
+uint8_t CGOL_hash(size_t a, size_t b, uint32_t d)
 {
     a = (a ^ 0xdeadbeef) + (a ^ 0xbeefdead);
     a ^= (b >> 17);
@@ -13,7 +13,7 @@ uint8_t CGOL_hash(size_t a, size_t b)
     a ^= (b << 7);
     a *= 0x7afb6c3d;
     a ^= (b >> 4);
-    return (a % 100) < 11;
+    return (a % 100) < d;
 }
 
 
@@ -60,7 +60,7 @@ CGOLMatrix* CGOL_init_grid(const CGOLArgs* args)
 
         for (int j = 0; j < grid->cols; j++) 
         {
-            _grid[i][j] = CGOL_hash(args->seed, j * rand());
+            _grid[i][j] = CGOL_hash(args->seed, j * rand(), args->density);
         }
     }
 
