@@ -80,7 +80,7 @@ int main(int argc, char** argv)
 {   
     CGOLArgs args = CGOL_parse_args(argc, argv);
              
-    env  = CGOL_X11_create(&args.display, 1);
+    env  = CGOL_X11_create(&args.display);
     cgol = CGOL_init_grid(&args);
 
     if (NULL == cgol || NULL == env) 

@@ -15,6 +15,7 @@ struct X11Env
 
     Colormap colormap;
     XColor   grid_color;
+    XColor   cell_color;
 
     uint32_t width;
     uint32_t height;
@@ -25,8 +26,7 @@ X11Env* m_env = NULL;
 
 
 
-X11Env* CGOL_X11_create(X11Display* display,
-                        const uint8_t set)
+X11Env* CGOL_X11_create(X11Display* display)
 {
     XSizeHints* size_hints;
 
@@ -76,7 +76,6 @@ X11Env* CGOL_X11_create(X11Display* display,
     
     XMapWindow(env->d, env->w);
 
-    XSetForeground(env->d, env->gc, BlackPixel(env->d, env->s));
 
     XStoreName(env->d, env->w, "CGOL: Conway's Game Of Life");
 
@@ -85,6 +84,11 @@ X11Env* CGOL_X11_create(X11Display* display,
     XParseColor(env->d, env->colormap, "#EDEEEF", &env->grid_color);
     XAllocColor(env->d, env->colormap, &env->grid_color);
 
+    XParseColor(env->d, env->colormap, "#333333", &env->cell_color);
+    XAllocColor(env->d, env->colormap, &env->cell_color);
+
+    XSetForeground(env->d, env->gc, env->cell_color.pixel);
+    
     m_env = env;
 
     return env;
@@ -103,7 +107,7 @@ void CGOL_X11_clear(void)
         XDrawLine(m_env->d, m_env->w, m_env->gc, i, 0, i, m_env->height);
     }
 
-    XSetForeground(m_env->d, m_env->gc, BlackPixel(m_env->d, m_env->s));
+    XSetForeground(m_env->d, m_env->gc, m_env->cell_color.pixel);
 
     XFlush(m_env->d);
 }

@@ -5,8 +5,7 @@
 #include <inttypes.h>
 
 
-X11Env* CGOL_X11_create(X11Display* display,
-                       const uint8_t set);
+X11Env* CGOL_X11_create(X11Display* display);
 
 void CGOL_X11_clear(void);
 
