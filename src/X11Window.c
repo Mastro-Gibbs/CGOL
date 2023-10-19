@@ -22,7 +22,7 @@ struct X11Env
 };
 
 
-X11Env* m_env = NULL;
+X11Env* x11env = NULL;
 
 
 
@@ -30,86 +30,82 @@ X11Env* CGOL_X11_create(X11Display* display)
 {
     XSizeHints* size_hints;
 
-    X11Env* env = malloc(sizeof(X11Env));
+    x11env = malloc(sizeof(X11Env));
 
-    if (NULL == env) return NULL;
+    if (NULL == x11env) return NULL;
 
+    x11env->d = XOpenDisplay(NULL);
 
-    env->d = XOpenDisplay(NULL);
-
-    if (NULL == env->d)
+    if (NULL == x11env->d)
     {
-        free(env);
+        free(x11env);
         return NULL;
     }
 
-    env->s = DefaultScreen(env->d);
+    x11env->s = DefaultScreen(x11env->d);
 
-    display->width  = display->maxsize ? XDisplayWidth(env->d, env->s)  : display->width,
-    display->height = display->maxsize ? XDisplayHeight(env->d, env->s) : display->height,
-    env->width      = display->width;
-    env->height     = display->height;
+    display->width  = display->maxsize ? XDisplayWidth(x11env->d, x11env->s)  : display->width,
+    display->height = display->maxsize ? XDisplayHeight(x11env->d, x11env->s) : display->height,
+    x11env->width      = display->width;
+    x11env->height     = display->height;
 
-    env->w = XCreateSimpleWindow(
-        env->d,
-        RootWindow(env->d, env->s),
+    x11env->w = XCreateSimpleWindow(
+        x11env->d,
+        RootWindow(x11env->d, x11env->s),
         0, 
         0,
-        env->width,
-        env->height,
+        x11env->width,
+        x11env->height,
         1,
-        BlackPixel(env->d, env->s),
-        WhitePixel(env->d, env->s)
+        BlackPixel(x11env->d, x11env->s),
+        WhitePixel(x11env->d, x11env->s)
     );
 
     size_hints = XAllocSizeHints();
     size_hints->flags = PMinSize | PMaxSize;
-    size_hints->min_width  = size_hints->max_width  = env->width;
-    size_hints->min_height = size_hints->max_height = env->height;
+    size_hints->min_width  = size_hints->max_width  = x11env->width;
+    size_hints->min_height = size_hints->max_height = x11env->height;
 
-    XSetWMNormalHints(env->d, env->w, size_hints);
+    XSetWMNormalHints(x11env->d, x11env->w, size_hints);
     XFree(size_hints);
 
-    XSelectInput(env->d, env->w, KeyPressMask | ExposureMask | ButtonPressMask);
+    XSelectInput(x11env->d, x11env->w, KeyPressMask | ExposureMask | ButtonPressMask);
 
-    env->gc = XCreateGC(env->d, env->w, 0, NULL);
+    x11env->gc = XCreateGC(x11env->d, x11env->w, 0, NULL);
     
-    XMapWindow(env->d, env->w);
+    XMapWindow(x11env->d, x11env->w);
 
+    XStoreName(x11env->d, x11env->w, "CGOL: Conway's Game Of Life");
 
-    XStoreName(env->d, env->w, "CGOL: Conway's Game Of Life");
+    x11env->colormap = DefaultColormap(x11env->d, x11env->s);
 
-    env->colormap = DefaultColormap(env->d, env->s);
+    XParseColor(x11env->d, x11env->colormap, "#EDEEEF", &x11env->grid_color);
+    XAllocColor(x11env->d, x11env->colormap, &x11env->grid_color);
 
-    XParseColor(env->d, env->colormap, "#EDEEEF", &env->grid_color);
-    XAllocColor(env->d, env->colormap, &env->grid_color);
+    XParseColor(x11env->d, x11env->colormap, "#333333", &x11env->cell_color);
+    XAllocColor(x11env->d, x11env->colormap, &x11env->cell_color);
 
-    XParseColor(env->d, env->colormap, "#333333", &env->cell_color);
-    XAllocColor(env->d, env->colormap, &env->cell_color);
+    XSetForeground(x11env->d, x11env->gc, x11env->cell_color.pixel);
 
-    XSetForeground(env->d, env->gc, env->cell_color.pixel);
-    
-    m_env = env;
-
-    return env;
+    return x11env;
 }
 
 
 void CGOL_X11_clear(void)
 {
-    XClearWindow(m_env->d, m_env->w);
+    XClearWindow(x11env->d, x11env->w);
 
-    XSetForeground(m_env->d, m_env->gc, m_env->grid_color.pixel);
+    XSetForeground(x11env->d, x11env->gc, x11env->grid_color.pixel);
 
-    for (uint32_t i = 0; i < m_env->width; i+=10)
+    for (uint32_t i = 0; i < x11env->width; i+=10)
     {
-        XDrawLine(m_env->d, m_env->w, m_env->gc, 0, i, m_env->width, i);
-        XDrawLine(m_env->d, m_env->w, m_env->gc, i, 0, i, m_env->height);
+        XDrawLine(x11env->d, x11env->w, x11env->gc, 0, i, x11env->width, i);
+        XDrawLine(x11env->d, x11env->w, x11env->gc, i, 0, i, x11env->height);
     }
 
-    XSetForeground(m_env->d, m_env->gc, m_env->cell_color.pixel);
+    XSetForeground(x11env->d, x11env->gc, x11env->cell_color.pixel);
 
-    XFlush(m_env->d);
+    XFlush(x11env->d);
 }
 
 
@@ -118,9 +114,9 @@ void CGOL_X11_next_evt(CGOLArgs* args)
     XEvent xevt;
     uint32_t col, row, val;
 
-    if (XPending(m_env->d))
+    if (XPending(x11env->d))
     {
-        XNextEvent(m_env->d, &xevt);
+        XNextEvent(x11env->d, &xevt);
         
         switch (xevt.type)
         {
@@ -130,11 +126,11 @@ void CGOL_X11_next_evt(CGOLArgs* args)
             {
                 row = (INFINITE_FACTOR_2 - 1) + (xevt.xbutton.y / 10);
                 col = (INFINITE_FACTOR_2 - 1) + (xevt.xbutton.x / 10);
-                val = args->xargs.grid->grid[row][col];
+                val = args->cgol->grid[row][col];
 
-                args->xargs.grid->grid[row][col] = !val;
+                args->cgol->grid[row][col] = !val;
 
-                CGOL_X11_draw_grid(args->xargs.grid);
+                CGOL_X11_draw_grid(args->cgol);
             }
             break;
 
@@ -175,7 +171,7 @@ void CGOL_X11_next_evt(CGOLArgs* args)
 
 void CGOL_X11_draw_grid(const CGOLMatrix* cgol)
 {
-    if (NULL != m_env)
+    if (NULL != x11env)
     {
         for (size_t i = INFINITE_FACTOR_2 - 1, xi = 0; i < cgol->rows - INFINITE_FACTOR_2; ++i, xi+=10)
         {
@@ -184,9 +180,9 @@ void CGOL_X11_draw_grid(const CGOLMatrix* cgol)
                 if (cgol->grid[i][j] == 1)
                 {
                     XFillRectangle(
-                        m_env->d, 
-                        m_env->w, 
-                        m_env->gc,
+                        x11env->d, 
+                        x11env->w, 
+                        x11env->gc,
                         xj,
                         xi,
                         9,
@@ -196,20 +192,20 @@ void CGOL_X11_draw_grid(const CGOLMatrix* cgol)
             }
         }
 
-        XFlush(m_env->d);
+        XFlush(x11env->d);
     }
 }
 
 void CGOL_X11_delete_env(void)
 {
-    if (NULL != m_env)
+    if (NULL != x11env)
     {
-        XFreeGC(m_env->d, m_env->gc);
-        XDestroyWindow(m_env->d, m_env->w);
-        XCloseDisplay(m_env->d);
+        XFreeGC(x11env->d, x11env->gc);
+        XDestroyWindow(x11env->d, x11env->w);
+        XCloseDisplay(x11env->d);
 
-        free(m_env);
+        free(x11env);
 
-        m_env = NULL;
+        x11env = NULL;
     }
 }

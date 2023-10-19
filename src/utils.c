@@ -8,6 +8,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <sys/time.h>
 
 
 uint8_t value(char* strval, size_t* intval)
@@ -110,9 +111,20 @@ size_t CGOL_rand_seed(void)
 }
 
 
-void CGOL_pause(uint32_t times)
+
+ttime_t utime(void) 
 {
-    usleep(999999 / times);
+    struct timeval tempo;
+    gettimeofday(&tempo, NULL);
+    return ((unsigned long long)tempo.tv_sec) * 1000000 + tempo.tv_usec;
+}
+
+
+void CGOL_adaptive_sleep(ttime_t* bt, uint32_t* rate)
+{
+    time_t  sleeptime = 999999 / *rate;
+
+    usleep(sleeptime - (utime() - *bt));
 }
 
 
@@ -128,10 +140,11 @@ CGOLArgs init_CGOLArgs(void)
         .density = 11, 
         .display = 
         {
-            .width     = 800, 
-            .height    = 600, 
-            .maxsize   = 0
+            .width   = 800, 
+            .height  = 600, 
+            .maxsize = 0
         }, 
+
         .xargs = 
         {
             .exposed = 0, 
@@ -139,9 +152,10 @@ CGOLArgs init_CGOLArgs(void)
             .suspend = 0, 
             .clear   = 0, 
             .newseed = 0, 
-            .exit    = 0,
-            .grid    = NULL
-        }
+            .exit    = 0
+        },
+
+        .cgol = NULL
     };
 
     return args;
@@ -199,7 +213,7 @@ CGOLArgs CGOL_parse_args(int argc, char** argv)
                 if (val < 800)
                 {
                     val = 800;
-                    printf("Width value too low: nomalized to %lu\n", val);
+                    printf("Value too low for %s: nomalized to %lu\n", param, val);
                 }
                 
                 args.display.width = (uint32_t) val;
@@ -213,7 +227,7 @@ CGOLArgs CGOL_parse_args(int argc, char** argv)
                 if (val < 600)
                 {
                     val = 600;
-                    printf("Height value too low: nomalized to %lu\n", val);
+                    printf("Value too low for %s: nomalized to %lu\n", param, val);
                 }
                 
                 args.display.height = (uint32_t) val;
@@ -232,7 +246,7 @@ CGOLArgs CGOL_parse_args(int argc, char** argv)
                     args.density = val;
 
                 if (val < 5 || val > 50)
-                    printf("Density value non valid: nomalized to %u\n", args.density);
+                    printf("Value too low for %s: nomalized to %u\n", param, args.density);
             }
         } 
 
@@ -246,7 +260,7 @@ CGOLArgs CGOL_parse_args(int argc, char** argv)
                     args.rate = val;
 
                 if (val > 50)
-                    printf("Update value non valid: nomalized to %u\n", args.rate);
+                    printf("Value too low for %s: nomalized to %u\n", param, args.rate);
             }
         } 
 

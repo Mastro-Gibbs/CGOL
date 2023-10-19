@@ -23,7 +23,7 @@ CGOLMatrix* CGOL_init_grid(CGOLArgs* args)
 
     if (NULL == cgol) return NULL;
 
-    args->xargs.grid = cgol;
+    args->cgol = cgol;
 
     cgol->cols = (args->display.width  / 10) + INFINITE_FACTOR;
     cgol->rows = (args->display.height / 10) + INFINITE_FACTOR;
@@ -84,9 +84,12 @@ void CGOL_clear_grid(CGOLMatrix* cgol)
 }
 
 
-void CGOL_newseed(CGOLMatrix* cgol, const CGOLArgs* args)
+void CGOL_newseed(CGOLMatrix* cgol, CGOLArgs* args)
 {
     CGOL_clear_grid(cgol);
+
+    if (args->density == 0)
+        args->density = 11;
 
     for (int i = 0; i < cgol->rows; i++) 
     {
@@ -116,54 +119,55 @@ void CGOL_release_grid(CGOLMatrix* cgol)
 }
 
 
+uint8_t alive_neighbours(CGOLMatrix* cgol, size_t i, size_t j)
+{
+    int dx, dy, ni, nj;
+
+    uint8_t neighbours = 0;
+
+    for (dx = -1; dx <= 1; dx++) 
+    {
+        for (dy = -1; dy <= 1; dy++) 
+        {
+            if (dx == 0 && dy == 0) continue;
+
+            ni = i + dx;
+            nj = j + dy;
+
+            if (ni >= 0 && ni < cgol->rows && nj >= 0 && nj < cgol->cols) 
+                neighbours += cgol->grid[ni][nj];
+        }
+    }
+
+    return neighbours;
+}
+
+
 void CGOL_algorithm(CGOLMatrix* cgol)
 {
+    uint8_t neighbours;
+
     for (int i = 0; i < cgol->rows; i++) 
     {
         memset(cgol->next[i], 0, cgol->cols * sizeof(uint32_t));
     }
 
-    for (int i = 0; i < cgol->rows; i++) 
+    for (size_t i = 0; i < cgol->rows; i++) 
     {
-        for (int j = 0; j < cgol->cols; j++) 
+        for (size_t j = 0; j < cgol->cols; j++) 
         {
-            int aliveNeighbours = 0;
-
-            for (int dx = -1; dx <= 1; dx++) 
-            {
-                for (int dy = -1; dy <= 1; dy++) 
-                {
-                    if (dx == 0 && dy == 0) continue;
-
-                    int ni = i + dx;
-                    int nj = j + dy;
-
-                    if (ni >= 0 && ni < cgol->rows && nj >= 0 && nj < cgol->cols) 
-                    {
-                        aliveNeighbours += cgol->grid[ni][nj];
-                    }
-                }
-            }
+            neighbours = alive_neighbours(cgol, i, j);
 
             if (1 == cgol->grid[i][j]) 
             {
-                // La cella è viva
-                if (aliveNeighbours < 2 || aliveNeighbours > 3) 
-                {
+                if (neighbours < 2 || neighbours > 3) 
                     cgol->next[i][j] = 0; // La cella muore
-                } 
                 else 
-                {
                     cgol->next[i][j] = 1; // La cella sopravvive
-                }
             } 
             else 
             {
-                // La cella è morta
-                if (3 == aliveNeighbours) 
-                {
-                    cgol->next[i][j] = 1; // La cella si riproduce
-                }
+                if (3 == neighbours) cgol->next[i][j] = 1; // La cella si riproduce
             }
         }
     }

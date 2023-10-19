@@ -34,6 +34,8 @@ void NewCGOL(CGOLArgs* args)
 
 int Run(CGOLArgs* args)
 {
+    ttime_t begintime = 0;
+
     CGOL_begin_msg(args);
 
     while (!args->xargs.exit)
@@ -58,10 +60,13 @@ int Run(CGOLArgs* args)
 
         else if (!args->xargs.evt && args->xargs.exposed && !args->xargs.suspend) 
         {   
+            begintime = utime();
+
             CGOL_algorithm(cgol);
             CGOL_X11_clear();
             CGOL_X11_draw_grid(cgol);
-            CGOL_pause(args->rate);
+
+            CGOL_adaptive_sleep(&begintime, &args->rate);
         }
     }
 

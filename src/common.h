@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+typedef unsigned long long ttime_t;
+
 typedef struct X11Env X11Env;
 
 typedef struct XBlockArray
@@ -34,19 +36,19 @@ typedef struct
     volatile uint32_t newseed;
     volatile uint32_t exit;
 
-    CGOLMatrix*       grid;
-
 } XEvtArgs;
 
 
 typedef struct 
 {
-    size_t     seed;
-    uint32_t   rate;
-    uint32_t   density;
+    size_t      seed;
+    uint32_t    rate;
+    uint32_t    density;
     
-    X11Display display;
-    XEvtArgs   xargs;
+    X11Display  display;
+    XEvtArgs    xargs;
+
+    CGOLMatrix* cgol;
     
 } CGOLArgs;
 
