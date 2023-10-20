@@ -16,15 +16,13 @@ CGOLMatrix* cgol = NULL;
 */
 int Run(CGOLArgs* args)
 {
-    volatile uint8_t* flags = &args->XEvtFlags;
-
     begin_msg(args);
 
-    while (CGOL_DO(*flags))
+    while (CGOL_DO(args->xflags))
     {
         X11_next_evt(args);
 
-        switch (*flags)
+        switch (args->xflags)
         {
             // clear command registered
             case CGOL_CLEAR:
@@ -33,7 +31,7 @@ int Run(CGOLArgs* args)
                 X11_clear(args);
 
                 // clear it
-                XEVENT_CLR(*flags, XEVENT_CLEAR);
+                XEVENT_CLR(args->xflags, XEVENT_CLEAR);
                 break;
             }
 
@@ -41,7 +39,6 @@ int Run(CGOLArgs* args)
             case CGOL_NEWGAME:
             {
                 args->btime = utime();
-                args->seed  = rand_seed();
 
                 CGOL_newgame(cgol, args);
                 X11_draw(args);
@@ -49,7 +46,7 @@ int Run(CGOLArgs* args)
                 adaptive_sleep(args);
 
                 // clear it
-                XEVENT_CLR(*flags, XEVENT_NEWGAME);
+                XEVENT_CLR(args->xflags, XEVENT_NEWGAME);
                 break;
             }
 
@@ -63,7 +60,7 @@ int Run(CGOLArgs* args)
             default:
             {
                 // do next game cycle if it isn't suspended
-                if (CGOL_CYCLE(*flags)) 
+                if (CGOL_CYCLE(args->xflags)) 
                 {   
                     args->btime = utime();
 
@@ -98,7 +95,7 @@ int Failure(void)
  * @return void
  * @param  void
 */
-void __attribute__((destructor)) destructor(void) 
+void GCC_ATTR_DESTRUCTOR destructor(void) 
 {
     CGOL_release(cgol);
     X11_release();

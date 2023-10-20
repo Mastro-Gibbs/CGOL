@@ -5,21 +5,18 @@
 #include <time.h>
 
 
-uint8_t CGOL_hash(size_t a, size_t b, uint32_t d)
+uint8_t randbit(size_t *seed, uint32_t density)
 {
-    a -= (a ^ 0xdeadbeef) + (b ^ 0xbeefdead);
-    a ^= (a >> 17);
-    a *= 0xc0ffeeee;
-    a ^= (a << 7);
-    a *= 0x7afb6c3d;
-    a ^= (a >> 4);
-    return (a % 100) < d;
+    *seed = (*seed * INT16_MAX) / 42 + 1; 
+    
+    return (*seed % 100) < density;
 }
 
 
 CGOLMatrix* CGOL_init(CGOLArgs* args)
 {
     CGOLMatrix* cgol = malloc(sizeof(CGOLMatrix));
+    size_t seedcopy  = 0;
 
     if (NULL == cgol) return NULL;
 
@@ -42,6 +39,8 @@ CGOLMatrix* CGOL_init(CGOLArgs* args)
         return NULL;
     }
 
+    seedcopy = args->seed;
+
     for(int i = 0; i < cgol->rows; i++) 
     {
         _grid[i] = calloc(cgol->cols, sizeof(uint32_t));
@@ -62,11 +61,10 @@ CGOLMatrix* CGOL_init(CGOLArgs* args)
             return NULL;
         }
 
-        srand(i * 42);
 
         for (int j = 0; j < cgol->cols; j++) 
         {
-            _grid[i][j] = CGOL_hash(args->seed, j * rand(), args->density);
+            _grid[i][j] = randbit(&seedcopy, args->density);
         }
     }
 
@@ -90,7 +88,12 @@ void CGOL_clear(CGOLMatrix* cgol)
 
 void CGOL_newgame(CGOLMatrix* cgol, CGOLArgs* args)
 {
+    size_t seedcopy = 0;
+    
     CGOL_clear(cgol);
+
+    args->seed = rand_seed();
+    seedcopy   = args->seed;
 
     if (args->density == 0) // in case of density == 0 use default
         args->density = 11;
@@ -99,7 +102,7 @@ void CGOL_newgame(CGOLMatrix* cgol, CGOLArgs* args)
     {
         for (int j = 0; j < cgol->cols; j++) 
         {
-            cgol->grid[i][j] = CGOL_hash(args->seed, j * rand(), args->density);
+            cgol->grid[i][j] = randbit(&seedcopy, args->density);
         }
     }
 

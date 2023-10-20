@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+// gcc attribute destructor macro
+#define GCC_ATTR_DESTRUCTOR __attribute__((destructor))
+
 // hold time in microseconds
 typedef unsigned long long ttime_t;
 
@@ -45,7 +48,7 @@ typedef struct
     
     // X event flags
     // exposed | evt | suspend | clear | newgame | exit 
-    volatile uint8_t XEvtFlags;
+    volatile uint8_t xflags;
 
     X11Display  display;
     CGOLMatrix* cgol;
@@ -99,7 +102,7 @@ typedef struct
  
 // default arg values 
 #define DEFAULT_RATE          4u
-#define DEFAULT_DENSITY       11u
+#define DEFAULT_DENSITY       20u
 #define DEFAULT_MIN_RATE      1u
 #define DEFAULT_MAX_RATE      40u
 #define DEFAULT_MAX_RATE_2    (DEFAULT_MAX_RATE / 2)
@@ -126,6 +129,7 @@ typedef struct
  
 // icon
 #define USE_ICON_LARGE        1
+
  
  
 #endif /* __CGOL_COMMON_H__ */

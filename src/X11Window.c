@@ -1,5 +1,6 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/Xatom.h>
 #include <stdlib.h>
 
 #include "X11Window.h"
@@ -29,6 +30,8 @@ struct X11Env
 
     GC       gc;
     int      s;
+
+	Atom wmDeleteMessage;
 
     Colormap colormap;
     XColor   grid_color;
@@ -120,6 +123,10 @@ X11Env* X11_create(X11Display* display)
         WhitePixel(x11env->d, x11env->s)
     );
 
+    // register interest in the delete window message
+    x11env->wmDeleteMessage = XInternAtom(x11env->d, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(x11env->d, x11env->w, &x11env->wmDeleteMessage, 1);
+
     // set window hints
     X11_hints(); 
 
@@ -174,7 +181,7 @@ void X11_clear(CGOLArgs* args)
     XFlush(x11env->d);
 }
 
-
+#include <stdio.h>
 void X11_next_evt(CGOLArgs* args)
 {
     XEvent xevt;
@@ -194,7 +201,7 @@ void X11_next_evt(CGOLArgs* args)
             // is execution in suspend
             // compute mouse click point
             // toggle corresponding cell
-            if (args->XEvtFlags & XEVENT_SUSPEND)
+            if (args->xflags & XEVENT_SUSPEND)
             {
                 row = (INFINITE_FACTOR_2 - 1) + (xevt.xbutton.y / args->gridsize);
                 col = (INFINITE_FACTOR_2 - 1) + (xevt.xbutton.x / args->gridsize);
@@ -213,23 +220,23 @@ void X11_next_evt(CGOLArgs* args)
             {
             // start/stop game
             case KEY_S:  
-                XEVENT_CHG(args->XEvtFlags, XEVENT_SUSPEND);
+                XEVENT_CHG(args->xflags, XEVENT_SUSPEND);
                 break;
 
             // quit game
             case KEY_Q:
-                XEVENT_SET(args->XEvtFlags, XEVENT_EXIT);
+                XEVENT_SET(args->xflags, XEVENT_EXIT);
                 break;
 
             // new game
             case KEY_N: 
-                XEVENT_SET(args->XEvtFlags, XEVENT_NEWGAME);
+                XEVENT_SET(args->xflags, XEVENT_NEWGAME);
                 break;
 
             // clear game
             case KEY_C:
-                if (args->XEvtFlags & XEVENT_SUSPEND)
-                    XEVENT_SET(args->XEvtFlags, XEVENT_CLEAR);
+                if (args->xflags & XEVENT_SUSPEND)
+                    XEVENT_SET(args->xflags, XEVENT_CLEAR);
                 break;
 
             // decrease cycle rate 
@@ -257,18 +264,27 @@ void X11_next_evt(CGOLArgs* args)
 
         // X window showing
         case Expose:
-            XEVENT_SET(args->XEvtFlags, XEVENT_EXPOSED);
+            XEVENT_SET(args->xflags, XEVENT_EXPOSED);
             break;
+
+		// check client messages
+        case ClientMessage:
+			// window X bnt pressed
+            if (xevt.xclient.data.l[0] == x11env->wmDeleteMessage)
+			{
+				XEVENT_SET(args->xflags, XEVENT_EXIT);
+			}
+			break;
         
         default:
             break;
         }
 
         // an event appear
-        XEVENT_SET(args->XEvtFlags, XEVENT_EVT);
+        XEVENT_SET(args->xflags, XEVENT_EVT);
     }
     // no event in queue
-    else XEVENT_CLR(args->XEvtFlags, XEVENT_EVT);
+    else XEVENT_CLR(args->xflags, XEVENT_EVT);
 }
 
 void X11_draw(CGOLArgs* args)

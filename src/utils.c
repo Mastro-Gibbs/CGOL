@@ -92,7 +92,7 @@ void begin_msg(CGOLArgs* args)
             args->rate
         );
 
-    if (0 == (args->XEvtFlags & XEVENT_EXPOSED)) runtime_commands();
+    if (0 == (args->xflags & XEVENT_EXPOSED)) runtime_commands();
 
     fflush(stdout);
 }
@@ -146,7 +146,7 @@ CGOLArgs init_CGOLArgs(void)
         .gridsize  = DEFAULT_GRID_SIZE, 
         .cellsize  = DEFAULT_CELL_SIZE, 
         .btime     = 0,
-        .XEvtFlags = DEFAULT_XEVENT_FLAGS,
+        .xflags = DEFAULT_XEVENT_FLAGS,
 
         .display = 
         {
@@ -193,8 +193,8 @@ CGOLArgs parse_args(int argc, char** argv)
         // editor mode
         else if (strcmp(param, "-e") == 0)
         {
-            XEVENT_SET(args.XEvtFlags, XEVENT_CLEAR);
-            XEVENT_SET(args.XEvtFlags, XEVENT_SUSPEND);
+            XEVENT_SET(args.xflags, XEVENT_CLEAR);
+            XEVENT_SET(args.xflags, XEVENT_SUSPEND);
             continue;
         }
 
@@ -306,7 +306,7 @@ CGOLArgs parse_args(int argc, char** argv)
     }
 
     // defaults for -e option
-    if (args.XEvtFlags & CGOL_EDITOR_MODE) 
+    if (args.xflags & CGOL_EDITOR_MODE) 
     {
         args.seed    = 0;
         args.density = 0;
