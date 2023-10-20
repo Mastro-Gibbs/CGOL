@@ -2,3 +2,7 @@ cgol
 
 .vscode/
 
+object/*
+object
+
+Makefile
