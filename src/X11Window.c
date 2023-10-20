@@ -1,8 +1,23 @@
-#include "X11Window.h"
-
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <stdlib.h>
+
+#include "X11Window.h"
+
+
+#if USE_ICON_LARGE == 1
+  #include "ico/iconlarge.xbm"
+  #define ICON_DATA   (_Xconst char*) iconlarge_bits
+  #define ICON_WIDTH  iconlarge_width
+  #define ICON_HEIGHT iconlarge_height
+#else 
+  #include "ico/icon.xbm"
+  #define ICON_DATA   (_Xconst char*) icon_bits
+  #define ICON_WIDTH  icon_width
+  #define ICON_HEIGHT icon_height
+#endif
+
+
 
 /**
  * implementation for X11Env struct
@@ -28,21 +43,41 @@ X11Env* x11env = NULL;
 
 
 /**
- * @brief  set X windows fixed size
+ * @brief  set X windows hints (size and bitmap)
  * @return void
  * @param  void
 */
-void X11_fixed_size(void)
+void X11_hints(void)
 {
-    XSizeHints* size_hints; // size hints to 
+    XSizeHints* size_hints  = NULL; // size hints
+    XWMHints*   pixmap_hint = NULL; // bitmap hints
+
+    Pixmap icon_pixmap = XCreateBitmapFromData(x11env->d, 
+                                               RootWindow(x11env->d, x11env->s), 
+                                               ICON_DATA, 
+                                               ICON_WIDTH, 
+                                               ICON_HEIGHT);
 
     size_hints = XAllocSizeHints();
-    size_hints->flags = PMinSize | PMaxSize;
-    size_hints->min_width  = size_hints->max_width  = x11env->width;
-    size_hints->min_height = size_hints->max_height = x11env->height;
 
-    XSetWMNormalHints(x11env->d, x11env->w, size_hints);
-    XFree(size_hints);
+    if (NULL != size_hints)
+    {
+        size_hints->flags = PMinSize | PMaxSize;
+        size_hints->min_width  = size_hints->max_width  = x11env->width;
+        size_hints->min_height = size_hints->max_height = x11env->height;
+        XSetWMNormalHints(x11env->d, x11env->w, size_hints);
+        XFree(size_hints);
+    }
+
+    pixmap_hint = XAllocWMHints();
+
+    if (NULL != pixmap_hint)
+    {
+        pixmap_hint->icon_pixmap = icon_pixmap;
+        pixmap_hint->flags = IconPixmapHint;
+        XSetWMHints(x11env->d, x11env->w, pixmap_hint);
+        XFree(pixmap_hint);
+    }
 }
 
 
@@ -85,8 +120,8 @@ X11Env* X11_create(X11Display* display)
         WhitePixel(x11env->d, x11env->s)
     );
 
-    // set window fixed size
-    X11_fixed_size(); 
+    // set window hints
+    X11_hints(); 
 
     // chose event listers
     XSelectInput(x11env->d, x11env->w, KeyPressMask | ExposureMask | ButtonPressMask);

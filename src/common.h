@@ -124,6 +124,8 @@ typedef struct
 #define DEFAULT_CELL_SIZE     (DEFAULT_GRID_SIZE - 1u)
  
  
+// icon
+#define USE_ICON_LARGE        1
  
  
 #endif /* __CGOL_COMMON_H__ */
