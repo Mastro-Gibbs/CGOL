@@ -33,10 +33,6 @@ struct X11Env
 
 	Atom wmDeleteMessage;
 
-    Colormap colormap;
-    XColor   grid_color;
-    XColor   cell_color;
-
     uint32_t width;
     uint32_t height;
 };
@@ -50,7 +46,7 @@ X11Env* x11env = NULL;
  * @return void
  * @param  void
 */
-void X11_hints(void)
+void X11_hints_and_protocols(void)
 {
     XSizeHints* size_hints  = NULL; // size hints
     XWMHints*   pixmap_hint = NULL; // bitmap hints
@@ -81,6 +77,20 @@ void X11_hints(void)
         XSetWMHints(x11env->d, x11env->w, pixmap_hint);
         XFree(pixmap_hint);
     }
+
+	// register interest in the delete window message
+    x11env->wmDeleteMessage = XInternAtom(x11env->d, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(x11env->d, x11env->w, &x11env->wmDeleteMessage, 1);
+}
+
+
+void X11_colors(void)
+{
+	// set bg color
+    XSetBackground(x11env->d, x11env->gc, BACKGROUND_COLOR);
+
+	// set color for cells
+    XSetForeground(x11env->d, x11env->gc, CELL_COLOR);
 }
 
 
@@ -123,35 +133,20 @@ X11Env* X11_create(X11Display* display)
         WhitePixel(x11env->d, x11env->s)
     );
 
-    // register interest in the delete window message
-    x11env->wmDeleteMessage = XInternAtom(x11env->d, "WM_DELETE_WINDOW", False);
-    XSetWMProtocols(x11env->d, x11env->w, &x11env->wmDeleteMessage, 1);
+    // create a GC
+    x11env->gc = XCreateGC(x11env->d, x11env->w, 0, NULL);
 
-    // set window hints
-    X11_hints(); 
+    // set window hints and protocols
+    X11_hints_and_protocols(); 
+
+	// parse and set colors
+	X11_colors();
 
     // chose event listers
     XSelectInput(x11env->d, x11env->w, KeyPressMask | ExposureMask | ButtonPressMask);
 
-    // create a GC
-    x11env->gc = XCreateGC(x11env->d, x11env->w, 0, NULL);
-    
     // set window name
     XStoreName(x11env->d, x11env->w, "CGOL: Conway's Game Of Life");
-
-    // get default colormap
-    x11env->colormap = DefaultColormap(x11env->d, x11env->s);
-
-    // parse color for grid
-    XParseColor(x11env->d, x11env->colormap, GRID_COLOR, &x11env->grid_color);
-    XAllocColor(x11env->d, x11env->colormap, &x11env->grid_color);
-
-    // parse color for cells
-    XParseColor(x11env->d, x11env->colormap, CELL_COLOR, &x11env->cell_color);
-    XAllocColor(x11env->d, x11env->colormap, &x11env->cell_color);
-
-    // set color for cells
-    XSetForeground(x11env->d, x11env->gc, x11env->cell_color.pixel);
 
     XMapWindow(x11env->d, x11env->w);
 
@@ -164,8 +159,11 @@ void X11_clear(CGOLArgs* args)
     // clear content
     XClearWindow(x11env->d, x11env->w); 
 
+	// set bg color
+    XSetWindowBackground(x11env->d, x11env->w, BACKGROUND_COLOR);
+
     // set color for grid
-    XSetForeground(x11env->d, x11env->gc, x11env->grid_color.pixel);
+    XSetForeground(x11env->d, x11env->gc, GRID_COLOR);
 
     // draw grid
     for (uint32_t i = 0; i < x11env->width; i+=args->gridsize)
@@ -175,7 +173,7 @@ void X11_clear(CGOLArgs* args)
     }
 
     // restore color for cells
-    XSetForeground(x11env->d, x11env->gc, x11env->cell_color.pixel);
+    XSetForeground(x11env->d, x11env->gc, CELL_COLOR);
 
     // flush the display
     XFlush(x11env->d);

@@ -116,15 +116,19 @@ typedef struct
  
  
 // grid data 
-#define GRID_COLOR            "#EDEEEF"
+#define GRID_COLOR            0xEDEEEF // very light gray
 #define DEFAULT_GRID_SIZE     10u
 #define DEFAULT_MIN_GRID_SIZE 2u
 #define DEFAULT_MAX_GRID_SIZE 50u
 
 
 // cell data 
-#define CELL_COLOR            "#333333"
+#define CELL_COLOR            0x333333 // dark gray
 #define DEFAULT_CELL_SIZE     (DEFAULT_GRID_SIZE - 1u)
+
+
+// background
+#define BACKGROUND_COLOR      0xE7DECC // bone white
  
  
 // icon
