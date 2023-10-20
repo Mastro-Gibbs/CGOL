@@ -1,0 +1,51 @@
+#!/bin/bash
+
+OBJDIR="object"
+MAKEFILE="Makefile"
+DONE=0
+
+
+if [ ! -d "$OBJDIR" ]; then
+	DONE=1;
+	echo "Creating object directory.";
+  	mkdir "$OBJDIR"
+fi
+
+
+if [ ! -f "$MAKEFILE" ]; then
+	DONE=1;
+	echo "Creating Makefile.";
+	
+cat <<EOF > Makefile
+CC     = gcc
+CFLAGS = -Wall -pedantic -std=gnu99 -O2
+CLIBS  = -lX11
+
+SRC_DIR = src
+OBJ_DIR = object
+
+SOURCES = \$(wildcard \$(SRC_DIR)/*.c)
+OBJECTS = \$(patsubst \$(SRC_DIR)/%.c, \$(OBJ_DIR)/%.o, \$(SOURCES))
+
+TARGET = cgol
+
+all: build
+
+\$(OBJ_DIR)/%.o: \$(SRC_DIR)/%.c
+	\$(CC) \$(CFLAGS) -c \$< -o \$@ \$(CLIBS)
+
+build: \$(OBJECTS)
+	\$(CC) \$(CFLAGS) \$(OBJECTS) -o \$(TARGET) \$(CLIBS)
+
+clean:
+	rm -rf \$(OBJECTS) cgol
+
+.PHONY: clean
+EOF
+
+fi
+
+
+if [ $DONE -eq 1 ]; then
+  	echo "Done."
+fi

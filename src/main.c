@@ -4,80 +4,108 @@
 
 #include <stdio.h>
 
+
 X11Env*     env  = NULL;
 CGOLMatrix* cgol = NULL;
 
+
+/**
+ * @brief  run game
+ * @return int
+ * @param  args is parsed args
+*/
+int Run(CGOLArgs* args)
+{
+    ttime_t begintime       = 0;
+    volatile uint8_t* flags = &args->XEvtFlags;
+
+    CGOL_begin_msg(args);
+
+    while (CGOL_DO(*flags))
+    {
+        CGOL_X11_next_evt(args);
+
+        switch (*flags)
+        {
+            // clear command registered
+            case CGOL_CLEAR:
+            {
+                CGOL_clear_grid(cgol);
+                CGOL_X11_clear(args);
+
+                // clear it
+                XEVENT_CLR(*flags, XEVENT_CLEAR);
+                break;
+            }
+
+            // new seed command registered
+            case CGOL_NEWSEED:
+            {
+                args->seed = CGOL_rand_seed();
+
+                CGOL_newseed(cgol, args);
+                CGOL_begin_msg(args);
+                CGOL_X11_draw_grid(args);
+
+                // clear it
+                XEVENT_CLR(*flags, XEVENT_NEWSEED);
+                break;
+            }
+
+            // expose event registered
+            case CGOL_FORCE_REDRAW:
+            {
+                CGOL_X11_clear(args);
+                CGOL_X11_draw_grid(args);
+                break;
+            }
+
+            default:
+            {
+                // do next game cycle if it isn't suspended
+                if (CGOL_CYCLE(*flags)) 
+                {   
+                    begintime = utime();
+
+                    CGOL_algorithm(cgol);
+                    CGOL_X11_clear(args);
+                    CGOL_X11_draw_grid(args);
+
+                    CGOL_adaptive_sleep(&begintime, args->rate);
+                }
+                break;
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+
+/**
+ * @brief  something wont start, error!
+ * @return int
+ * @param  void
+*/
+int Failure(void)
+{
+    fprintf(stderr, "Failed to stat cgol :(\n");
+    return EXIT_FAILURE;
+}
+
+
+/**
+ * @brief  gcc destructor extension, it frees allocated data
+ * @return void
+ * @param  void
+*/
 void __attribute__((destructor)) destructor(void) 
 {
     CGOL_release_grid(cgol);
     CGOL_X11_delete_env();
-}
 
-
-void ClearCGOL(XEvtArgs* xargs)
-{
-    CGOL_clear_grid(cgol);
-    CGOL_X11_clear();
-    xargs->clear = 0;
-}
-
-
-void NewCGOL(CGOLArgs* args)
-{
-    args->seed = CGOL_rand_seed();
-    CGOL_newseed(cgol, args);
-    CGOL_begin_msg(args);
-    CGOL_X11_draw_grid(cgol);
-    args->xargs.newseed = 0;
-}
-
-
-int Run(CGOLArgs* args)
-{
-    ttime_t begintime = 0;
-
-    CGOL_begin_msg(args);
-
-    while (!args->xargs.exit)
-    {
-        CGOL_X11_next_evt(args);
-
-        if (args->xargs.exposed && args->xargs.suspend && args->xargs.clear)
-        {
-            ClearCGOL(&args->xargs);
-        }
-
-        else if (args->xargs.exposed && args->xargs.newseed)
-        {
-            NewCGOL(args);
-        }
-
-        else if (args->xargs.evt && args->xargs.exposed) 
-        {
-            CGOL_X11_clear();
-            CGOL_X11_draw_grid(cgol);
-        }
-
-        else if (!args->xargs.evt && args->xargs.exposed && !args->xargs.suspend) 
-        {   
-            begintime = utime();
-
-            CGOL_algorithm(cgol);
-            CGOL_X11_clear();
-            CGOL_X11_draw_grid(cgol);
-
-            CGOL_adaptive_sleep(&begintime, &args->rate);
-        }
-    }
-
-    return 0;
-}
-
-
-int Failure(void)
-{
-    fprintf(stderr, "Failed to stat cgol :(\n");
-    return 1;
+    printf("\nBye bye from CGOL, see you soon ;)\n");
+    fflush(stdout);
 }
 
 

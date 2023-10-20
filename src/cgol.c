@@ -25,12 +25,15 @@ CGOLMatrix* CGOL_init_grid(CGOLArgs* args)
 
     args->cgol = cgol;
 
-    cgol->cols = (args->display.width  / 10) + INFINITE_FACTOR;
-    cgol->rows = (args->display.height / 10) + INFINITE_FACTOR;
+    // compute sizes 
+    cgol->cols = (args->display.width  / args->gridsize) + INFINITE_FACTOR;
+    cgol->rows = (args->display.height / args->gridsize) + INFINITE_FACTOR;
 
+    // allocate 2d array
     uint32_t** _grid = malloc(sizeof(uint32_t*) * cgol->rows);
     uint32_t** _next = malloc(sizeof(uint32_t*) * cgol->rows);
 
+    // on error, free memory and return NULL
     if (NULL == _grid || NULL == _next) 
     {        
         if (NULL != _grid) free(_grid);
@@ -44,6 +47,7 @@ CGOLMatrix* CGOL_init_grid(CGOLArgs* args)
         _grid[i] = calloc(cgol->cols, sizeof(uint32_t));
         _next[i] = calloc(cgol->cols, sizeof(uint32_t));
 
+        // on error, free memory and return NULL
         if (NULL == _grid[i] || NULL == _next[i]) 
         { 
             for (int j = 0; j < i; j++) 
@@ -88,7 +92,7 @@ void CGOL_newseed(CGOLMatrix* cgol, CGOLArgs* args)
 {
     CGOL_clear_grid(cgol);
 
-    if (args->density == 0)
+    if (args->density == 0) // in case of density == 0 use default
         args->density = 11;
 
     for (int i = 0; i < cgol->rows; i++) 
@@ -118,9 +122,24 @@ void CGOL_release_grid(CGOLMatrix* cgol)
     }
 }
 
-
+/**
+ * @brief  retrive alive neighbours near current cell pointed by i and j
+ * @return alive neighbours count
+ * @param  cgol is CGOLMatrix reference
+ * @param  i    is row offset
+ * @param  j    is col offset
+*/
 uint8_t alive_neighbours(CGOLMatrix* cgol, size_t i, size_t j)
 {
+    /*  EXAMPLE
+     *  C is selected cell
+     *  x is neighbour
+    
+       xxx
+       xCx
+       xxx
+
+    */
     int dx, dy, ni, nj;
 
     uint8_t neighbours = 0;
@@ -161,17 +180,18 @@ void CGOL_algorithm(CGOLMatrix* cgol)
             if (1 == cgol->grid[i][j]) 
             {
                 if (neighbours < 2 || neighbours > 3) 
-                    cgol->next[i][j] = 0; // La cella muore
+                    cgol->next[i][j] = 0; // cell die
                 else 
-                    cgol->next[i][j] = 1; // La cella sopravvive
+                    cgol->next[i][j] = 1; // cell survive
             } 
             else 
             {
-                if (3 == neighbours) cgol->next[i][j] = 1; // La cella si riproduce
+                if (3 == neighbours) cgol->next[i][j] = 1; // cell come back to life
             }
         }
     }
 
+    // swap pointers
     uint32_t** temp = cgol->grid;
     cgol->grid = cgol->next;
     cgol->next = temp;

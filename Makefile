@@ -2,20 +2,23 @@ CC     = gcc
 CFLAGS = -Wall -pedantic -std=gnu99 -O2
 CLIBS  = -lX11
 
-SRC    = src/cgol.c \
-	src/X11Window.c \
-	src/utils.c \
-	src/main.c
+SRC_DIR = src
+OBJ_DIR = object
+
+SOURCES = $(wildcard $(SRC_DIR)/*.c)
+OBJECTS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SOURCES))
 
 TARGET = cgol
 
-
 all: build
 
-build: $(SRC)
-	$(CC) -g $(CFLAGS) $^ -o $(TARGET) $(CLIBS)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@ $(CLIBS)
+
+build: $(OBJECTS)
+	$(CC) $(CFLAGS) $(OBJECTS) -o $(TARGET) $(CLIBS)
 
 clean:
-	rm -rf main.o X11Window.o cgol.o cgol
+	rm -rf $(OBJECTS) cgol
 
 .PHONY: clean

@@ -11,6 +11,12 @@
 #include <sys/time.h>
 
 
+/**
+ * @brief  cast string to base 10 number. only positive number are valid
+ * @return 0 on error, 1 otherwise
+ * @param  strval is string
+ * @param  intval is reference into store parsed number
+*/
 uint8_t value(char* strval, size_t* intval)
 {
     for (int j = 0; strval[j] != '\0'; j++) 
@@ -54,6 +60,7 @@ void usage(void)
            "-h -> window height\n"
            "-d -> default grid density [5..50]\n"
            "-r -> grid update rate [1..50]\n"
+           "-c -> cell size\n"
            "\n"
            "VALUES\n"
            "positive integers\n"
@@ -65,12 +72,6 @@ void usage(void)
         );
     
     runtime_commands();
-}
-
-void ArgsErr(void)
-{
-    fprintf(stderr, "Error: param without/invalid value or unknown option.\n");
-    exit(EXIT_FAILURE);
 }
 
 
@@ -91,7 +92,7 @@ void CGOL_begin_msg(CGOLArgs* args)
             args->rate
         );
 
-    if (!args->xargs.exposed) runtime_commands();
+    if (0 == (args->XEvtFlags & XEVENT_EXPOSED)) runtime_commands();
 
     fflush(stdout);
 }
@@ -120,14 +121,18 @@ ttime_t utime(void)
 }
 
 
-void CGOL_adaptive_sleep(ttime_t* bt, uint32_t* rate)
+void CGOL_adaptive_sleep(ttime_t* bt, uint8_t rate)
 {
-    time_t  sleeptime = 999999 / *rate;
+    time_t  sleeptime = MAX_SLEEP_TIME / rate;
 
     usleep(sleeptime - (utime() - *bt));
 }
 
-
+/**
+ * @brief  init default CGOL args
+ * @return CGOLArgs object
+ * @param  void
+*/
 CGOLArgs init_CGOLArgs(void)
 {
     srand(time(NULL));
@@ -135,25 +140,19 @@ CGOLArgs init_CGOLArgs(void)
 
     CGOLArgs args = 
     {
-        .seed    = randseed, 
-        .rate    = 4, 
-        .density = 11, 
+        .seed      = randseed, 
+        .rate      = DEFAULT_RATE, 
+        .density   = DEFAULT_DENSITY,
+        .gridsize  = DEFAULT_GRID_SIZE, 
+        .cellsize  = DEFAULT_CELL_SIZE, 
+        .XEvtFlags = DEFAULT_XEVENT_FLAGS,
+
         .display = 
         {
-            .width   = 800, 
-            .height  = 600, 
+            .width   = X11WND_DEFAULT_WIDTH, 
+            .height  = X11WND_DEFAULT_HEIGHT, 
             .maxsize = 0
         }, 
-
-        .xargs = 
-        {
-            .exposed = 0, 
-            .evt     = 1, 
-            .suspend = 0, 
-            .clear   = 0, 
-            .newseed = 0, 
-            .exit    = 0
-        },
 
         .cgol = NULL
     };
@@ -176,22 +175,25 @@ CGOLArgs CGOL_parse_args(int argc, char** argv)
     {
         param = argv[i];
 
+        // help
         if (strcmp(param, "--help") == 0)
         {
             usage();
             exit(EXIT_SUCCESS);
         }
 
+        // window max size
         else if (strcmp(param, "-m") == 0)
         {
             args.display.maxsize = 1;
             continue;
         }
 
+        // editor mode
         else if (strcmp(param, "-e") == 0)
         {
-            args.xargs.clear   = 1;
-            args.xargs.suspend = 1;
+            XEVENT_SET(args.XEvtFlags, XEVENT_CLEAR);
+            XEVENT_SET(args.XEvtFlags, XEVENT_SUSPEND);
             continue;
         }
 
@@ -201,85 +203,119 @@ CGOLArgs CGOL_parse_args(int argc, char** argv)
         strval = argv[i];
         val    = 0;
 
+        // seed
         if (strcmp(param, "-s") == 0) 
         {
             if (value(strval, &val)) args.seed = (size_t) val;
         } 
 
+        // cell size
+        else if (strcmp(param, "-c") == 0) 
+        {
+            if (value(strval, &val))
+            {
+                if (val < DEFAULT_MIN_GRID_SIZE)
+                    args.gridsize = DEFAULT_MIN_GRID_SIZE;
+                else if (val > DEFAULT_MAX_GRID_SIZE)
+                    args.gridsize = DEFAULT_MAX_GRID_SIZE;
+                else
+                    args.gridsize = val;
+
+                if (val < DEFAULT_MIN_GRID_SIZE || val > DEFAULT_MAX_GRID_SIZE)
+                    printf("Value off range for option '%s': nomalized to %u\n", param, args.gridsize);
+                
+                args.cellsize = (uint8_t) args.gridsize - 1;
+            }
+        }
+
+        // width
         else if (strcmp(param, "-w") == 0) 
         {
             if (value(strval, &val))
             {
-                if (val < 800)
+                if (val < X11WND_DEFAULT_WIDTH)
                 {
-                    val = 800;
-                    printf("Value too low for %s: nomalized to %lu\n", param, val);
+                    val = X11WND_DEFAULT_WIDTH;
+                    printf("Value too low for option '%s': nomalized to %lu\n", param, val);
                 }
                 
-                args.display.width = (uint32_t) val;
+                args.display.width = (uint8_t) val;
             }
         } 
 
+        // height
         else if (strcmp(param, "-h") == 0) 
         {
             if (value(strval, &val))
             {
-                if (val < 600)
+                if (val < X11WND_DEFAULT_HEIGHT)
                 {
-                    val = 600;
-                    printf("Value too low for %s: nomalized to %lu\n", param, val);
+                    val = X11WND_DEFAULT_HEIGHT;
+                    printf("Value too low for option '%s': nomalized to %lu\n", param, val);
                 }
                 
-                args.display.height = (uint32_t) val;
+                args.display.height = (uint8_t) val;
             }
         } 
 
+        // density
         else if (strcmp(param, "-d") == 0) 
         {
             if (value(strval, &val))
             {
-                if (val < 5)
-                    args.density = 5;
-                else if (val > 50)
-                    args.density = 50;
+                if (val < DEFAULT_MIN_DENSITY)
+                    args.density = DEFAULT_MIN_DENSITY;
+                else if (val > DEFAULT_MAX_DENSITY)
+                    args.density = DEFAULT_MAX_DENSITY;
                 else
                     args.density = val;
 
-                if (val < 5 || val > 50)
-                    printf("Value too low for %s: nomalized to %u\n", param, args.density);
+                if (val < DEFAULT_MIN_DENSITY || val > DEFAULT_MAX_DENSITY)
+                    printf("Value off range for option '%s': nomalized to %u\n", param, args.density);
             }
         } 
 
+        // rate
         else if (strcmp(param, "-u") == 0) 
         {
             if (value(strval, &val))
             {
-                if (val > 50)
-                    args.rate = 50;
+                if (val > DEFAULT_MAX_RATE)
+                    args.rate = DEFAULT_MAX_RATE;
                 else
                     args.rate = val;
 
-                if (val > 50)
-                    printf("Value too low for %s: nomalized to %u\n", param, args.rate);
+                if (val > DEFAULT_MAX_RATE)
+                    printf("Value off range for option '%s': nomalized to %u\n", param, args.rate);
             }
         } 
 
+        // error
         else
         {
             val = 0;
         }
     }
 
-    if (val == 0)
+    // argument error case
+    if (val == 0) 
     {
         fprintf(stderr, "Error: option '%s' without/invalid value or unknown.\n", param);
         exit(EXIT_FAILURE);
     }
 
-    if (args.xargs.clear && args.xargs.suspend)
+    // defaults for -e option
+    if (args.XEvtFlags & CGOL_EDITOR_MODE) 
     {
         args.seed    = 0;
         args.density = 0;
+    }
+
+    // re-check rate if gridsize is less then DEFAULT_GRID_SIZE
+    if (args.rate > DEFAULT_MAX_RATE_2 && args.gridsize < DEFAULT_GRID_SIZE)
+    {
+        printf("Value too high for option '-c' with cell size %u: nomalized to %u\n", args.gridsize, DEFAULT_MAX_RATE_2);
+        args.rate = DEFAULT_MAX_RATE_2;
     }
 
     return args;

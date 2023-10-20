@@ -24,6 +24,7 @@ C implementation of the Conway's game of life.
 ```bash
   $ git clone https://github.com/Mastro-Gibbs/CGOL.git
   $ cd CGOL
+  $ ./configure
   $ make
 ```
 ---
