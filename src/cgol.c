@@ -17,7 +17,7 @@ uint8_t CGOL_hash(size_t a, size_t b, uint32_t d)
 }
 
 
-CGOLMatrix* CGOL_init_grid(CGOLArgs* args)
+CGOLMatrix* CGOL_init(CGOLArgs* args)
 {
     CGOLMatrix* cgol = malloc(sizeof(CGOLMatrix));
 
@@ -78,7 +78,7 @@ CGOLMatrix* CGOL_init_grid(CGOLArgs* args)
 
 
 
-void CGOL_clear_grid(CGOLMatrix* cgol)
+void CGOL_clear(CGOLMatrix* cgol)
 {
     for (int i = 0; i < cgol->rows; i++) 
     {
@@ -88,9 +88,9 @@ void CGOL_clear_grid(CGOLMatrix* cgol)
 }
 
 
-void CGOL_newseed(CGOLMatrix* cgol, CGOLArgs* args)
+void CGOL_newgame(CGOLMatrix* cgol, CGOLArgs* args)
 {
-    CGOL_clear_grid(cgol);
+    CGOL_clear(cgol);
 
     if (args->density == 0) // in case of density == 0 use default
         args->density = 11;
@@ -102,10 +102,12 @@ void CGOL_newseed(CGOLMatrix* cgol, CGOLArgs* args)
             cgol->grid[i][j] = CGOL_hash(args->seed, j * rand(), args->density);
         }
     }
+
+    begin_msg(args);
 }
 
 
-void CGOL_release_grid(CGOLMatrix* cgol)
+void CGOL_release(CGOLMatrix* cgol)
 {
     if (NULL != cgol)
     {

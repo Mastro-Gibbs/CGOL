@@ -75,7 +75,7 @@ void usage(void)
 }
 
 
-void CGOL_begin_msg(CGOLArgs* args)
+void begin_msg(CGOLArgs* args)
 {
     printf(
             "\n"
@@ -98,7 +98,7 @@ void CGOL_begin_msg(CGOLArgs* args)
 }
 
 
-size_t CGOL_rand_seed(void)
+size_t rand_seed(void)
 {
     size_t a = rand(), b = time(NULL);
     a = (a ^ 0xdeadbeef) + (b ^ 0xbeeff00d);
@@ -121,11 +121,11 @@ ttime_t utime(void)
 }
 
 
-void CGOL_adaptive_sleep(ttime_t* bt, uint8_t rate)
+void adaptive_sleep(CGOLArgs* args)
 {
-    time_t  sleeptime = MAX_SLEEP_TIME / rate;
+    time_t sleeptime = MAX_SLEEP_TIME / args->rate;
 
-    usleep(sleeptime - (utime() - *bt));
+    usleep(sleeptime - (utime() - args->btime));
 }
 
 /**
@@ -136,7 +136,7 @@ void CGOL_adaptive_sleep(ttime_t* bt, uint8_t rate)
 CGOLArgs init_CGOLArgs(void)
 {
     srand(time(NULL));
-    size_t randseed = CGOL_rand_seed();
+    size_t randseed = rand_seed();
 
     CGOLArgs args = 
     {
@@ -145,6 +145,7 @@ CGOLArgs init_CGOLArgs(void)
         .density   = DEFAULT_DENSITY,
         .gridsize  = DEFAULT_GRID_SIZE, 
         .cellsize  = DEFAULT_CELL_SIZE, 
+        .btime     = 0,
         .XEvtFlags = DEFAULT_XEVENT_FLAGS,
 
         .display = 
@@ -161,7 +162,7 @@ CGOLArgs init_CGOLArgs(void)
 }
 
 
-CGOLArgs CGOL_parse_args(int argc, char** argv) 
+CGOLArgs parse_args(int argc, char** argv) 
 {
     CGOLArgs args = init_CGOLArgs();
     size_t   val  = 1;

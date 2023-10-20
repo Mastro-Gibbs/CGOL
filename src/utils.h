@@ -8,23 +8,22 @@
  * @return void
  * @param args is struct reference that hold cgol settings
 */
-void CGOL_begin_msg(CGOLArgs* args);
+void begin_msg(CGOLArgs* args);
 
 /**
  * @brief generate a new rand seed 
  * @return seed
  * @param void
 */
-size_t CGOL_rand_seed(void);
+size_t rand_seed(void);
 
 /**
  * @brief sleep function. it sleeps for 
- *        (1000000 / *rate)  - (utime() - *bt).
+ *        (1000000 / rate)  - (utime() - begintime).
  * @return void
- * @param bt is reference to value returned from utime()
- * @param rate is tick rate per second or how many CGOL cycle you want for second
+ * @param args is struct reference that hold cgol settings
 */
-void CGOL_adaptive_sleep(ttime_t* bt, uint8_t rate);
+void adaptive_sleep(CGOLArgs* args);
 
 /**
  * @brief parse program arguments
@@ -32,7 +31,7 @@ void CGOL_adaptive_sleep(ttime_t* bt, uint8_t rate);
  * @param argc is arguments count
  * @param argv is arguments value count
 */
-CGOLArgs CGOL_parse_args(int argc, char** argv);
+CGOLArgs parse_args(int argc, char** argv);
 
 /**
  * @brief  get the time in microseconds

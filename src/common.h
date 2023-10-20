@@ -40,9 +40,11 @@ typedef struct
     uint8_t  density;
     uint8_t  gridsize;
     uint8_t  cellsize;
+
+    ssize_t  btime;
     
     // X event flags
-    // exposed | evt | suspend | clear | newseed | exit 
+    // exposed | evt | suspend | clear | newgame | exit 
     volatile uint8_t XEvtFlags;
 
     X11Display  display;
@@ -64,7 +66,7 @@ typedef struct
  
 // X event flags getters 
 #define XEVENT_EXIT           (1 << 0)
-#define XEVENT_NEWSEED        (1 << 1)
+#define XEVENT_NEWGAME        (1 << 1)
 #define XEVENT_CLEAR          (1 << 2)
 #define XEVENT_SUSPEND        (1 << 3)
 #define XEVENT_EVT            (1 << 4)
@@ -74,7 +76,7 @@ typedef struct
 // X event facilities getters 
 #define CGOL_EDITOR_MODE      (XEVENT_SUSPEND | XEVENT_CLEAR)
 #define CGOL_CLEAR            (XEVENT_EXPOSED | XEVENT_SUSPEND | XEVENT_CLEAR)
-#define CGOL_NEWSEED          (XEVENT_EXPOSED | XEVENT_NEWSEED)
+#define CGOL_NEWGAME          (XEVENT_EXPOSED | XEVENT_NEWGAME)
 #define CGOL_FORCE_REDRAW     (XEVENT_EXPOSED | XEVENT_EVT)
 #define CGOL_CYCLE(flags)     ((flags & XEVENT_EXPOSED) && !(flags & XEVENT_EVT) && !(flags & XEVENT_SUSPEND))
 #define CGOL_DO(flags)        (0 == (flags & XEVENT_EXIT))

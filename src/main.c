@@ -16,22 +16,21 @@ CGOLMatrix* cgol = NULL;
 */
 int Run(CGOLArgs* args)
 {
-    ttime_t begintime       = 0;
     volatile uint8_t* flags = &args->XEvtFlags;
 
-    CGOL_begin_msg(args);
+    begin_msg(args);
 
     while (CGOL_DO(*flags))
     {
-        CGOL_X11_next_evt(args);
+        X11_next_evt(args);
 
         switch (*flags)
         {
             // clear command registered
             case CGOL_CLEAR:
             {
-                CGOL_clear_grid(cgol);
-                CGOL_X11_clear(args);
+                CGOL_clear(cgol);
+                X11_clear(args);
 
                 // clear it
                 XEVENT_CLR(*flags, XEVENT_CLEAR);
@@ -39,24 +38,25 @@ int Run(CGOLArgs* args)
             }
 
             // new seed command registered
-            case CGOL_NEWSEED:
+            case CGOL_NEWGAME:
             {
-                args->seed = CGOL_rand_seed();
+                args->btime = utime();
+                args->seed  = rand_seed();
 
-                CGOL_newseed(cgol, args);
-                CGOL_begin_msg(args);
-                CGOL_X11_draw_grid(args);
+                CGOL_newgame(cgol, args);
+                X11_draw(args);
+
+                adaptive_sleep(args);
 
                 // clear it
-                XEVENT_CLR(*flags, XEVENT_NEWSEED);
+                XEVENT_CLR(*flags, XEVENT_NEWGAME);
                 break;
             }
 
             // expose event registered
             case CGOL_FORCE_REDRAW:
             {
-                CGOL_X11_clear(args);
-                CGOL_X11_draw_grid(args);
+                X11_draw(args);
                 break;
             }
 
@@ -65,13 +65,12 @@ int Run(CGOLArgs* args)
                 // do next game cycle if it isn't suspended
                 if (CGOL_CYCLE(*flags)) 
                 {   
-                    begintime = utime();
+                    args->btime = utime();
 
                     CGOL_algorithm(cgol);
-                    CGOL_X11_clear(args);
-                    CGOL_X11_draw_grid(args);
+                    X11_draw(args);
 
-                    CGOL_adaptive_sleep(&begintime, args->rate);
+                    adaptive_sleep(args);
                 }
                 break;
             }
@@ -101,8 +100,8 @@ int Failure(void)
 */
 void __attribute__((destructor)) destructor(void) 
 {
-    CGOL_release_grid(cgol);
-    CGOL_X11_delete_env();
+    CGOL_release(cgol);
+    X11_release();
 
     printf("\nBye bye from CGOL, see you soon ;)\n");
     fflush(stdout);
@@ -111,10 +110,10 @@ void __attribute__((destructor)) destructor(void)
 
 int main(int argc, char** argv)
 {   
-    CGOLArgs args = CGOL_parse_args(argc, argv);
+    CGOLArgs args = parse_args(argc, argv);
              
-    env  = CGOL_X11_create(&args.display);
-    cgol = CGOL_init_grid(&args);
+    env  = X11_create(&args.display);
+    cgol = CGOL_init(&args);
 
     if (NULL == cgol || NULL == env) 
         return Failure();

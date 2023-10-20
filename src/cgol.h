@@ -2,6 +2,7 @@
 #define __CGOL_H__
 
 #include "common.h"
+#include "utils.h"
 #include <stdlib.h>
 
 /**
@@ -9,14 +10,14 @@
  * @return CGOLMatrix* on success (needs to be freed) or NULL on error
  * @param  args parsed arguments
 */
-CGOLMatrix* CGOL_init_grid(CGOLArgs* args);
+CGOLMatrix* CGOL_init(CGOLArgs* args);
 
 /**
  * @brief  erase current both matrix
  * @return void
  * @param  cgol is CGOLMatrix reference
 */
-void CGOL_clear_grid(CGOLMatrix* cgol);
+void CGOL_clear(CGOLMatrix* cgol);
 
 /**
  * @brief  prepare a runtime new rand configuration based on args
@@ -24,14 +25,14 @@ void CGOL_clear_grid(CGOLMatrix* cgol);
  * @param  cgol is current configuration/status reference
  * @param  args is new args reference
 */
-void CGOL_newseed(CGOLMatrix* cgol, CGOLArgs* args);
+void CGOL_newgame(CGOLMatrix* cgol, CGOLArgs* args);
 
 /**
  * @brief  deallocate CGOL buffers
  * @return void
  * @param  cgol is CGOLMatrix reference to be deallocated
 */
-void CGOL_release_grid(CGOLMatrix* cgol);
+void CGOL_release(CGOLMatrix* cgol);
 
 /**
  * @brief  compute a new game cycle (it's the core!)

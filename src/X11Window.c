@@ -46,7 +46,7 @@ void X11_fixed_size(void)
 }
 
 
-X11Env* CGOL_X11_create(X11Display* display)
+X11Env* X11_create(X11Display* display)
 {
     x11env = malloc(sizeof(X11Env)); // allocate env
 
@@ -117,7 +117,7 @@ X11Env* CGOL_X11_create(X11Display* display)
 }
 
 
-void CGOL_X11_clear(CGOLArgs* args)
+void X11_clear(CGOLArgs* args)
 {
     // clear content
     XClearWindow(x11env->d, x11env->w); 
@@ -140,7 +140,7 @@ void CGOL_X11_clear(CGOLArgs* args)
 }
 
 
-void CGOL_X11_next_evt(CGOLArgs* args)
+void X11_next_evt(CGOLArgs* args)
 {
     XEvent xevt;
     uint32_t col, row, val;
@@ -168,7 +168,7 @@ void CGOL_X11_next_evt(CGOLArgs* args)
                 args->cgol->grid[row][col] = !val;
 
                 // draw updated grid
-                CGOL_X11_draw_grid(args);
+                X11_draw(args);
             }
             break;
 
@@ -188,7 +188,7 @@ void CGOL_X11_next_evt(CGOLArgs* args)
 
             // new game
             case KEY_N: 
-                XEVENT_SET(args->XEvtFlags, XEVENT_NEWSEED);
+                XEVENT_SET(args->XEvtFlags, XEVENT_NEWGAME);
                 break;
 
             // clear game
@@ -236,9 +236,11 @@ void CGOL_X11_next_evt(CGOLArgs* args)
     else XEVENT_CLR(args->XEvtFlags, XEVENT_EVT);
 }
 
-void CGOL_X11_draw_grid(CGOLArgs* args)
+void X11_draw(CGOLArgs* args)
 {
     CGOLMatrix* cgol = args->cgol;
+
+    X11_clear(args);
 
     // using INFINITE_FACTOR_2 to get visible area
     for (size_t i = INFINITE_FACTOR_2 - 1, xi = 0; i < cgol->rows - INFINITE_FACTOR_2; ++i, xi+=args->gridsize)
@@ -264,7 +266,7 @@ void CGOL_X11_draw_grid(CGOLArgs* args)
     XFlush(x11env->d);
 }
 
-void CGOL_X11_delete_env(void)
+void X11_release(void)
 {
     if (NULL != x11env)
     {
